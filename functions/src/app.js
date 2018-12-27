@@ -12,7 +12,7 @@ app.use(helmet());
 app.use(express.urlencoded())
 
 // Registra os controllers:
-app.get('/cron', cronController);
-app.post('/message', messageController);
+app.get('/api/cron', cronController);
+app.post('/api/message', messageController);
 
 module.exports = app;
