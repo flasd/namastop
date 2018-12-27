@@ -13,13 +13,14 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
-    "axios": "^0.18.0",
     "es6-promise-pool": "^2.5.0",
     "express": "^4.16.4",
     "firebase-admin": "~6.0.0",
     "firebase-functions": "^2.1.0",
     "helmet": "^3.15.0",
     "qs": "^6.6.0",
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.5",
     "secure-compare": "^3.0.1"
   },
   "devDependencies": {
