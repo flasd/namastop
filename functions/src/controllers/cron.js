@@ -1,16 +1,8 @@
-const axios = require('axios');
+const requestPromise = require('request-promise-native');
 const qs = require('qs');
 const secureCompare = require('secure-compare');
 const functions = require('firebase-functions');
-const promisePool = require('es6-promise-pool');
-const { trimObject } = require('../utils');
-
-const { PromisePool } = promisePool;
-const AXIOS_OPTIONS = {
-  headers: {
-    Authentication: `Bearer ${functions.config().slack.key}`,
-  },
-};
+const PromisePool = require('es6-promise-pool');
 
 /**
  * @function getMembers
@@ -19,24 +11,21 @@ const AXIOS_OPTIONS = {
  * @return {Promise} Resolve com todos os usuários.
  */
 async function getMembers(cursor, members = []) {
-  const queryString = qs.stringify(
-    trimObject({
-      token: functions.config().slack.key,
-      limit: 200,
-      cursor,
-    }),
-  );
+  const queryString = qs.stringify({
+    token: functions.config().slack.key,
+    limit: 200,
+    cursor,
+  });
 
-  const response = await axios.get(
-    `https://slack.com/api/users.list?${queryString}`,
-  );
+  const response = await requestPromise({
+    uri: `https://slack.com/api/users.list?${queryString}`,
+    json: true,
+  });
 
-  if (response.data && response.data.ok) {
+  if (response && response.ok) {
     const {
-      data: {
-        response_metadata: { next_cursor: nextCursor },
-        members: newMembers,
-      },
+      response_metadata: { next_cursor: nextCursor },
+      members: newMembers,
     } = response;
 
     const nextMembers = [...members, ...newMembers];
@@ -45,48 +34,74 @@ async function getMembers(cursor, members = []) {
       return getMembers(nextCursor, nextMembers);
     }
 
-    return [...members, ...newMembers];
+    return nextMembers;
   }
 
   throw new Error(JSON.stringify(response));
 }
 
 /**
- * @function sendMessages
- * @param  {Array<Object>} members Lista com todos os usuários,
- * @return {Promise} Resolve se a mensagem for enviada.
+ * @function sendMessage
+ * @param  {Object} member Objeto do membro do Slack,
+ * @return {Promise} Resolve depois de 500ms de delay.
  */
-async function sendMessages(members) {
-  if (members.length > 0) {
-    const current = members.pop();
-
-    const {
-      data: {
-        channel: { id },
-      },
-    } = await axios.post(
-      'https://slack.com/api/im.open',
-      {
-        user: current.id,
-      },
-      AXIOS_OPTIONS,
-    );
-
-    await axios.post(
-      'https://slack.com/api/chat.postMessage',
-      {
-        channel: id,
-        text: `Olá ${current.name}!
- Lembre-se de tirar alguns minutinhos do seu dia para agradecer a ajuda que você recebeu essa semana!
- Use o comando '/namastop' para agradecer alguem que te ajudou!`,
-      },
-      AXIOS_OPTIONS,
-    );
-
-    return new Promise(r => setTimeout(() => r(), 500));
+async function sendMessage(member) {
+  if (member.id === 'USLACKBOT' || member.is_bot) {
+    return Promise.resolve();
   }
 
-  return null;
+  const channelResponse = await requestPromise({
+    method: 'POST',
+    uri: `https://slack.com/api/im.open?${qs.stringify({
+      token: functions.config().slack.key,
+      user: member.id,
+    })}`,
+    json: true,
+  });
+
+  if (!channelResponse.ok) {
+    // eslint-disable-next-line no-console
+    console.error(`Messaging user failed ${channelResponse.error}`);
+
+    return Promise.resolve();
+  }
+
+  await requestPromise({
+    method: 'POST',
+    uri: `https://slack.com/api/chat.postMessage?${qs.stringify({
+      token: functions.config().slack.key,
+      channel: channelResponse.channel.id,
+      text: `Olá ${member.name}!
+Lembre-se de tirar alguns minutinhos do seu dia para agradecer a ajuda que você recebeu essa semana!
+Use o comando '/namastop' para agradecer alguem que te ajudou!`,
+    })}`,
+    json: true,
+  });
+
+  return new Promise(r => setTimeout(() => r(), 500));
+}
+
+/**
+ * @function sendMessages
+ * @param  {Array<Object>} members Lista com todos os usuários,
+ * @return {PromisePool} Retorna a pool de promises.
+ */
+function sendMessages(members) {
+  const clone = [...members];
+
+  return new PromisePool(() => {
+    if (clone.length > 0) {
+      const current = members.pop();
+
+      if (!current) {
+        return null;
+      }
+
+      return sendMessage(current);
+    }
+
+    return null;
+  }, 3);
 }
 
 module.exports = async function cronController(request, response) {
@@ -96,19 +111,21 @@ module.exports = async function cronController(request, response) {
     // eslint-disable-next-line no-console
     console.error('Chave inválida recebida.');
 
-    return response.status(403).send();
+    response.status(403).end();
+    return;
   }
 
   try {
     const members = await getMembers();
 
-    const pool = new PromisePool(() => sendMessages(members), 5);
+    const pool = sendMessages(members);
     await pool.start();
 
-    return response.status(200).send();
+    response.status(200).end();
+    return;
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(error);
-    return response.status(500).send();
+    response.status(500).end();
   }
 };
