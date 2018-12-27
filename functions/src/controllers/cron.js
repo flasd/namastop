@@ -5,11 +5,11 @@ const functions = require('firebase-functions');
 const promisePool = require('es6-promise-pool');
 const { trimObject } = require('../utils');
 
-const PromisePool = promisePool.PromisePool;
+const { PromisePool } = promisePool;
 const AXIOS_OPTIONS = {
   headers: {
-    Authentication: `Bearer ${functions.config().slack.key}`
-  }
+    Authentication: `Bearer ${functions.config().slack.key}`,
+  },
 };
 
 /**
@@ -23,26 +23,29 @@ async function getMembers(cursor, members = []) {
     trimObject({
       token: functions.config().slack.key,
       limit: 200,
-      cursor
-    })
+      cursor,
+    }),
   );
 
   const response = await axios.get(
-    `https://slack.com/api/users.list?${queryString}`
+    `https://slack.com/api/users.list?${queryString}`,
   );
 
   if (response.data && response.data.ok) {
     const {
-      response_metadata: { next_cursor }
-    } = data;
+      data: {
+        response_metadata: { next_cursor: nextCursor },
+        members: newMembers,
+      },
+    } = response;
 
-    const nextMembers = [...members, ...data.members];
+    const nextMembers = [...members, ...newMembers];
 
-    if (next_cursor.length > 0) {
-      return await getMembers(next_cursor, nextMembers);
+    if (nextCursor.length > 0) {
+      return getMembers(nextCursor, nextMembers);
     }
 
-    return [...members, ...data.members];
+    return [...members, ...newMembers];
   }
 
   throw new Error(JSON.stringify(response));
@@ -57,35 +60,30 @@ async function sendMessages(members) {
   if (members.length > 0) {
     const current = members.pop();
 
-    const queryString = qs.stringify({
-      token: functions.config().slack.key,
-      user: current
-    });
-
     const {
       data: {
-        channel: { id }
-      }
+        channel: { id },
+      },
     } = await axios.post(
       'https://slack.com/api/im.open',
       {
-        user: current.id
+        user: current.id,
       },
-      AXIOS_OPTIONS
+      AXIOS_OPTIONS,
     );
 
-    const { data } = await axios.post(
+    await axios.post(
       'https://slack.com/api/chat.postMessage',
       {
         channel: id,
         text: `Olá ${current.name}!
  Lembre-se de tirar alguns minutinhos do seu dia para agradecer a ajuda que você recebeu essa semana!
- Use o comando '/namastop' para agradecer alguem que te ajudou!`
+ Use o comando '/namastop' para agradecer alguem que te ajudou!`,
       },
-      AXIOS_OPTIONS
+      AXIOS_OPTIONS,
     );
 
-    return await new Promise(r => setTimeout(() => r(), 500));
+    return new Promise(r => setTimeout(() => r(), 500));
   }
 
   return null;
@@ -95,6 +93,7 @@ module.exports = async function cronController(request, response) {
   const { key } = request.query;
 
   if (!secureCompare(key, functions.config().cron.key)) {
+    // eslint-disable-next-line no-console
     console.error('Chave inválida recebida.');
 
     return response.status(403).send();
@@ -108,6 +107,7 @@ module.exports = async function cronController(request, response) {
 
     return response.status(200).send();
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error(error);
     return response.status(500).send();
   }

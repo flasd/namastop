@@ -1,13 +1,12 @@
 const axios = require('axios');
 const qs = require('qs');
-const secureCompare = require('secure-compare');
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
 const AXIOS_OPTIONS = {
   headers: {
-    Authentication: `Bearer ${functions.config().slack.key}`
-  }
+    Authentication: `Bearer ${functions.config().slack.key}`,
+  },
 };
 
 admin.initializeApp();
@@ -25,11 +24,11 @@ module.exports = async function messageController(request, response) {
     // Adquirir informações de quem enviou a mensagem;
     const senderQs = qs.stringify({
       token: functions.config().slack.key,
-      user: body.user_id
+      user: body.user_id,
     });
 
     const { data: sender } = await axios.get(
-      `https://slack.com/api/users.info?${senderQs}`
+      `https://slack.com/api/users.info?${senderQs}`,
     );
 
     // Adquirir informações de quem foi mencionado mensagem na mensagem;
@@ -37,11 +36,11 @@ module.exports = async function messageController(request, response) {
 
     const reciverQs = qs.stringify({
       token: functions.config().slack.key,
-      user: reciverId.replace(/\W/g, '')
+      user: reciverId.replace(/\W/g, ''),
     });
 
     const { data: reciver } = await axios.get(
-      `https://slack.com/api/users.info?${reciverQs}`
+      `https://slack.com/api/users.info?${reciverQs}`,
     );
 
     // Salva a mensagem no banco
@@ -56,37 +55,39 @@ module.exports = async function messageController(request, response) {
         toName: reciver.name,
         toPicture: reciver.profile.image_192,
         createdAt: new Date(),
-        text: body.text.replace(/, <@\w+>/, '')
+        text: body.text.replace(/, <@\w+>/, ''),
       });
 
-    const response = {
+    const slackResponse = {
       text: 'Sua mensagem foi adicionada ao mural!',
       attachments: [
         {
           text:
-            'Acesse namastop-app.firebaseapp.com para ver todas as mensagens!'
-        }
-      ]
+            'Acesse namastop-app.firebaseapp.com para ver todas as mensagens!',
+        },
+      ],
     };
 
     if (useUrl) {
-      await axios.post(body.response_url, response, AXIOS_OPTIONS);
+      await axios.post(body.response_url, slackResponse, AXIOS_OPTIONS);
 
       return;
     }
 
     response.status(200).json(response);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error(error);
-    const response = {
-      text: 'Aldo deu errado do nosso lado. Tente novamente.'
+    const slackResponse = {
+      text: 'Aldo deu errado do nosso lado. Tente novamente.',
     };
 
     if (useUrl) {
       try {
-        await axios.post(body.response_url, response, AXIOS_OPTIONS);
+        await axios.post(body.response_url, slackResponse, AXIOS_OPTIONS);
       } catch (anotherError) {
         // here be dragons
+        // eslint-disable-next-line no-console
         console.error(error);
         return;
       }

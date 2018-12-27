@@ -9,7 +9,7 @@ const app = express();
 app.use(helmet());
 
 // Habitita parsin de forms enviados via url;
-app.use(express.urlencoded())
+app.use(express.urlencoded());
 
 // Registra os controllers:
 app.get('/api/cron', cronController);
