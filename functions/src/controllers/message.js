@@ -1,4 +1,4 @@
-const axios = require('axios');
+const requestPromise = require('request-promise-native');
 const qs = require('qs');
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
@@ -27,35 +27,39 @@ module.exports = async function messageController(request, response) {
       user: body.user_id,
     });
 
-    const { data: sender } = await axios.get(
-      `https://slack.com/api/users.info?${senderQs}`,
-    );
+    const sender = await requestPromise({
+      uri: `https://slack.com/api/users.info?${senderQs}`,
+      json: true,
+    });
 
     // Adquirir informações de quem foi mencionado mensagem na mensagem;
-    const [reciverId] = body.text.match(/<@\w+>/);
+    const [, reciverId] = body.text.match(/<@(\w+)\|/);
 
     const reciverQs = qs.stringify({
       token: functions.config().slack.key,
       user: reciverId.replace(/\W/g, ''),
     });
 
-    const { data: reciver } = await axios.get(
-      `https://slack.com/api/users.info?${reciverQs}`,
-    );
+    const reciver = await requestPromise({
+      uri: `https://slack.com/api/users.info?${reciverQs}`,
+      json: true,
+    });
+
+    admin.firestore().settings({ timestampsInSnapshots: true });
 
     // Salva a mensagem no banco
     await admin
       .firestore()
       .collection('messages')
       .add({
-        fromId: sender.id,
-        fromName: sender.name,
-        fromPicture: sender.profile.image_192,
-        toId: reciver.id,
-        toName: reciver.name,
-        toPicture: reciver.profile.image_192,
+        fromId: sender.user.id,
+        fromName: sender.user.name,
+        fromPicture: sender.user.profile.image_192,
+        toId: reciver.user.id,
+        toName: reciver.user.name,
+        toPicture: reciver.user.profile.image_192,
         createdAt: new Date(),
-        text: body.text.replace(/, <@\w+>/, ''),
+        text: body.text.replace(/, <@\w+(|\w+)?>/, ''),
       });
 
     const slackResponse = {
@@ -69,12 +73,18 @@ module.exports = async function messageController(request, response) {
     };
 
     if (useUrl) {
-      await axios.post(body.response_url, slackResponse, AXIOS_OPTIONS);
+      await requestPromise({
+        method: 'POST',
+        uri: body.response_url,
+        body: slackResponse,
+        json: true,
+        ...AXIOS_OPTIONS,
+      });
 
       return;
     }
 
-    response.status(200).json(response);
+    response.status(200).json(slackResponse);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(error);
@@ -84,7 +94,13 @@ module.exports = async function messageController(request, response) {
 
     if (useUrl) {
       try {
-        await axios.post(body.response_url, slackResponse, AXIOS_OPTIONS);
+        await requestPromise({
+          method: 'POST',
+          uri: body.response_url,
+          body: slackResponse,
+          json: true,
+          ...AXIOS_OPTIONS,
+        });
       } catch (anotherError) {
         // here be dragons
         // eslint-disable-next-line no-console
@@ -93,6 +109,6 @@ module.exports = async function messageController(request, response) {
       }
     }
 
-    response.status(200).json(response);
+    response.status(500).json(slackResponse);
   }
 };
