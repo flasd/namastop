@@ -54,7 +54,7 @@ module.exports = async function messageController(request, response) {
         toName: reciver.user.name,
         toPicture: reciver.user.profile.image_192,
         createdAt: new Date(),
-        text: body.text.replace(/, <@\w+(|\w+)?>/, ''),
+        text: body.text,
       });
 
     const slackResponse = {
