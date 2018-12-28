@@ -1,15 +1,13 @@
 const requestPromise = require('request-promise-native');
 const qs = require('qs');
-const admin = require('firebase-admin');
 const functions = require('firebase-functions');
+const firestore = require('../repository');
 
 const AXIOS_OPTIONS = {
   headers: {
     Authentication: `Bearer ${functions.config().slack.key}`,
   },
 };
-
-admin.initializeApp();
 
 module.exports = async function messageController(request, response) {
   const { body } = request;
@@ -45,11 +43,8 @@ module.exports = async function messageController(request, response) {
       json: true,
     });
 
-    admin.firestore().settings({ timestampsInSnapshots: true });
-
     // Salva a mensagem no banco
-    await admin
-      .firestore()
+    await firestore()
       .collection('messages')
       .add({
         fromId: sender.user.id,
