@@ -1,68 +1,45 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Namastop
 
-## Available Scripts
+### Setup
 
-In the project directory, you can run:
+Para configurar seu app Namastop em um Team do Slack, abra [https://api.slack.com/apps](https://api.slack.com/apps) e crie seu app. Selecione seu app, clique em `Add features and functionality`, selecione `Bots` e crie seu bot.olte uma página e clique novamente em `Add features and functionality` e selecione `Permissions`. Desça até `Scopes` e busque por `Bot` e `Commands`. Salve as alterações. Na mesma página, copie`Bot User OAuth Access Token`.
 
-### `npm start`
+Agora, abra seu terminal e siga os passos a seguir:
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```
+git clone https://github.com/flasd/namastop.git
+...
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+cd namastop
 
-### `npm test`
+npm install
+...
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+cd functions
 
-### `npm run build`
+npm install
+...
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+cd ..
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+// Substitua BotUserOAuthAccessToken pelo token copiado anteriormente
+firebase functions:config:set slack.key="BotUserOAuthAccessToken"
+...
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+// Crie um token aleatório em https://bit.ly/2QVtOkL e coloque-o no lugar de TheAccessToken
+firebase functions:config:set cron.key="TheAccessToken"
+...
 
-### `npm run eject`
+npm run build
+...
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+firebase deploy
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Agora abra `http://cron-job.org`, crie uma conta e configure um CronJob para apontar para a url `https://namastop-app.firebaseapp.com/api/message?key=TheAccessToken`. (Lembre-se de substituir TheAccessToken pelo token criado anteriormente).
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Pronto!
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Copyright & License
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+Copyright (c) 2019 [Marcel de Oliveira Coelho](https://github.com/flasd) sob a [Licença MIT](https://github.com/husscode/cpf-check/blob/master/LICENSE.md). Go Crazy. :rocket:
