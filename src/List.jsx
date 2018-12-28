@@ -1,8 +1,13 @@
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import { InfiniteLoader, List } from 'react-virtualized';
+import { Button } from 'reactstrap';
+import TimeAgo from 'react-timeago';
+import portugueseSettings from 'react-timeago/lib/language-strings/pt-br';
+import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
 import BlockUi from 'react-block-ui';
 import firebase from './services/firebase';
+import styles from './List.module.css';
+
+const languageFormatter = buildFormatter(portugueseSettings);
 
 export default class MessageList extends Component {
   constructor(props) {
@@ -14,8 +19,6 @@ export default class MessageList extends Component {
     };
 
     this.fetchMoreData = this.fetchMoreData.bind(this);
-    this.isRowLoaded = this.isRowLoaded.bind(this);
-    this.renderRow = this.renderRow.bind(this);
     this.lastSeen = null;
     this.hasMore = true;
   }
@@ -46,7 +49,7 @@ export default class MessageList extends Component {
 
     try {
       const ref = firebase.firestore().collection('messages');
-      const query = (lastSeen ? ref.startAfter(lastSeen) : ref).limit(25);
+      const query = (lastSeen ? ref.startAfter(lastSeen) : ref).limit(2);
 
       const querySnapshot = await query.get();
 
@@ -56,8 +59,13 @@ export default class MessageList extends Component {
           inFlight: false,
         });
 
+        this.hasMore = false;
+
         return;
       }
+
+      this.hasMore = querySnapshot.docs.length >= 2;
+      this.lastSeen = querySnapshot.docs[querySnapshot.docs.length - 1];
 
       this.setState(currentState => ({
         list: [
@@ -79,30 +87,8 @@ export default class MessageList extends Component {
     }
   }
 
-  isRowLoaded({ index }) {
-    const { list } = this.state;
-
-    return !!list[index];
-  }
-
-  renderRow({ key, index, styles }) {
-    const { list } = this.state;
-
-    if (list.length === 0) {
-      return null;
-    }
-
-    const message = list[index];
-    return (
-      <div key={key} style={styles}>
-        {message.text}
-      </div>
-    );
-  }
-
   render() {
-    const { inFlight, error } = this.state;
-    const { count } = this.props;
+    const { list, inFlight, error } = this.state;
 
     if (error) {
       return 'Erro!';
@@ -110,28 +96,48 @@ export default class MessageList extends Component {
 
     return (
       <BlockUi blocking={inFlight}>
-        <InfiniteLoader
-          isRowLoaded={this.isRowLoaded}
-          loadMoreRows={this.fetchMoreData}
-          rowCount={count}
-        >
-          {({ onRowsRendered, registerChild }) => (
-            <List
-              height={window.innerHeight}
-              onRowsRendered={onRowsRendered}
-              ref={registerChild}
-              rowCount={count}
-              rowHeight={24}
-              rowRenderer={this.renderRow}
-              width={300}
-            />
-          )}
-        </InfiniteLoader>
+        {list.map(item => (
+          <div key={item.id} className={styles.container}>
+            <div className={styles.itemWrapper}>
+              <div className={styles.itemHeader}>
+                <div>
+                  <img
+                    src={item.fromPicture}
+                    alt="foto de quem agradeceu"
+                    className={styles.picture}
+                  />
+                </div>
+                <div className={styles.name}>{item.fromName}</div>
+                <div className={styles.agradeceu}> agradeceu </div>
+                <div>
+                  <img
+                    src={item.toPicture}
+                    alt="foto de quem agradeceu"
+                    className={styles.picture}
+                  />
+                </div>
+                <div className={styles.name}>{item.toName}</div>
+              </div>
+              <div className={styles.message}>
+                {item.text
+                  .replace(/<(@)\w+(\|?\w+)>/g, '$1$2')
+                  .replace('|', '')}
+              </div>
+              <div className={styles.time}>
+                <TimeAgo
+                  date={item.createdAt.toDate()}
+                  formatter={languageFormatter}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+        {this.hasMore && !inFlight && (
+          <Button color="primary" block onClick={this.fetchMoreData}>
+            Carregar Mais
+          </Button>
+        )}
       </BlockUi>
     );
   }
 }
-
-MessageList.propTypes = {
-  count: PropTypes.number.isRequired,
-};
