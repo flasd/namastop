@@ -2,7 +2,7 @@
 
 ### Setup
 
-Para configurar seu app Namastop em um Team do Slack, abra [https://api.slack.com/apps](https://api.slack.com/apps) e crie seu app. Selecione seu app, clique em `Add features and functionality`, selecione `Bots` e crie seu bot.olte uma página e clique novamente em `Add features and functionality` e selecione `Permissions`. Desça até `Scopes` e busque por `Bot` e `Commands. Salve as alterações. Na mesma página, copie`Bot User OAuth Access Token`.
+Para configurar seu app Namastop em um Team do Slack, abra [https://api.slack.com/apps](https://api.slack.com/apps) e crie seu app. Selecione seu app, clique em `Add features and functionality`, selecione `Bots` e crie seu bot.olte uma página e clique novamente em `Add features and functionality` e selecione `Permissions`. Desça até `Scopes` e busque por `Bot` e `Commands`. Salve as alterações. Na mesma página, copie`Bot User OAuth Access Token`.
 
 Agora, abra seu terminal e siga os passos a seguir:
 
@@ -36,7 +36,7 @@ npm run build
 firebase deploy
 ```
 
-Agora abra `http://cron-job.org`, crie uma conta e configure um CronJob para apontar para a url `https://namastop-app.firebaseapp.com/api/message?key=TheAccessToken`. (Lembre se substituir TheAccessToken pelo token criado anteriormente).
+Agora abra `http://cron-job.org`, crie uma conta e configure um CronJob para apontar para a url `https://namastop-app.firebaseapp.com/api/message?key=TheAccessToken`. (Lembre-se de substituir TheAccessToken pelo token criado anteriormente).
 
 Pronto!
 
